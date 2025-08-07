@@ -1,5 +1,7 @@
 import streamlit as st
 import datetime
+import json
+import os
 
 # 设置页面配置
 st.set_page_config(
@@ -146,8 +148,88 @@ st.markdown("""
         margin: 3rem 0;
         border-radius: 1px;
     }
+    
+    .comment-section {
+        background-color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin: 2rem 0;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #27ae60;
+    }
+    
+    .comment-form {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        border: 1px solid #e9ecef;
+    }
+    
+    .comment {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        border-left: 3px solid #3498db;
+    }
+    
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .comment-author {
+        font-weight: bold;
+        color: #2c3e50;
+        font-size: 1rem;
+    }
+    
+    .comment-date {
+        color: #7f8c8d;
+        font-size: 0.8rem;
+        font-style: italic;
+    }
+    
+    .comment-content {
+        color: #2c3e50;
+        line-height: 1.6;
+        font-size: 1rem;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# 留言数据文件
+COMMENTS_FILE = "comments.json"
+
+def load_comments():
+    """加载留言数据"""
+    if os.path.exists(COMMENTS_FILE):
+        try:
+            with open(COMMENTS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+def save_comments(comments):
+    """保存留言数据"""
+    with open(COMMENTS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(comments, f, ensure_ascii=False, indent=2)
+
+def add_comment(name, content):
+    """添加新留言"""
+    comments = load_comments()
+    new_comment = {
+        "name": name,
+        "content": content,
+        "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "id": len(comments) + 1
+    }
+    comments.append(new_comment)
+    save_comments(comments)
 
 # 博客数据
 blog_posts = [
@@ -244,6 +326,60 @@ blog_posts = [
     }
 ]
 
+def show_comment_section():
+    """显示留言区域"""
+    st.markdown("""
+    <div class="comment-section">
+        <h3>💬 Leave Your Thoughts</h3>
+        <p>Every voice matters. Share your thoughts, memories, or reflections on these stories. Your words become part of the collective memory we're building together.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 留言表单
+    with st.container():
+        st.markdown("""
+        <div class="comment-form">
+            <h4>Share Your Voice</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            name = st.text_input("Your Name", placeholder="Anonymous")
+        
+        with col2:
+            content = st.text_area("Your Message", placeholder="Share your thoughts, memories, or reflections...", height=100)
+        
+        if st.button("Post Comment", type="primary"):
+            if content.strip():
+                add_comment(name if name.strip() else "Anonymous", content.strip())
+                st.success("Thank you for sharing your voice. Your comment has been added.")
+                st.rerun()
+            else:
+                st.error("Please enter a message.")
+    
+    # 显示留言
+    comments = load_comments()
+    if comments:
+        st.markdown("### Recent Voices")
+        for comment in reversed(comments[-10:]):  # 显示最近10条留言
+            st.markdown(f"""
+            <div class="comment">
+                <div class="comment-header">
+                    <span class="comment-author">{comment['name']}</span>
+                    <span class="comment-date">{comment['date']}</span>
+                </div>
+                <div class="comment-content">{comment['content']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="text-align: center; color: #7f8c8d; padding: 2rem;">
+            <p>No comments yet. Be the first to share your thoughts.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
 def main():
     # 侧边栏
     with st.sidebar:
@@ -309,6 +445,9 @@ def main():
         # 在文章之间添加分隔线
         if i < len(blog_posts) - 1:
             st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+    
+    # 留言区域
+    show_comment_section()
     
     # 页脚
     st.markdown("---")
